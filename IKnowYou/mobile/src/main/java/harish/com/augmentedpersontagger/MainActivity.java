@@ -202,6 +202,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+        startSpeechReception();
     }
 
     @Override
