@@ -12,7 +12,9 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.os.Handler;
 import android.os.Message;
+import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -26,6 +28,8 @@ import java.util.Arrays;
 import harish.com.augmentedgpstagger.R;
 
 public class MainActivity extends AppCompatActivity implements Handler.Callback {
+
+    // camera related
     private static final String CAMERA_ID = "0";
     private static final int MAIN_ACTIVITY_SPEECH_RECOGNITON_CODE = 100;
     private CameraDevice cameraDevice;
@@ -37,6 +41,11 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     private CameraManager manager;
     private CameraDevice.StateCallback cameraDeviceStateCallBack;
     private final Handler handler = new Handler(this);
+
+    // audio related
+    private SpeechRecognizer speechRecognizer;
+    private Intent speechRecognizerIntent;
+    private boolean isListening;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,13 +85,20 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     }
 
     private void startSpeechReception() {
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        //intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-        //        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        try {
-            startActivityForResult(intent, MAIN_ACTIVITY_SPEECH_RECOGNITON_CODE);
-        } catch (ActivityNotFoundException a) {
+        if(speechRecognizer == null) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            SpeechRecognitionListener listener = new SpeechRecognitionListener();
+            speechRecognizer.setRecognitionListener(listener);
         }
+
+        speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,
+                this.getPackageName());
+        //speechRecognizerIntent.putExtra("android.speech.extra.DICTATION_MODE", true);
+
+        speechRecognizer.startListening(speechRecognizerIntent);
     }
 
     @Override
@@ -189,8 +205,18 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     }
 
     @Override
+    public void onDestroy() {
+        super.onDestroy();
+        stopServices();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
+        stopServices();
+    }
+
+    private void stopServices() {
         try{
             if(cameraCaptureSession != null) {
                 cameraCaptureSession.stopRepeating();
@@ -207,8 +233,14 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                 cameraCaptureSession = null;
             }
         }
-    }
 
+        // stop audio service for this app
+        if (speechRecognizer != null)
+        {
+            speechRecognizer.destroy();
+            speechRecognizer = null;
+        }
+    }
     @Override
     public boolean handleMessage(Message msg) {
         switch (msg.what) {
@@ -220,5 +252,66 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         }
 
         return true;
+    }
+
+    protected class SpeechRecognitionListener implements RecognitionListener
+    {
+
+        @Override
+        public void onReadyForSpeech(Bundle params) {
+            System.out.println("************ ready for speech **********");
+        }
+
+        @Override
+        public void onBeginningOfSpeech() {
+            System.out.println("************ beginning speech **********");
+        }
+
+        @Override
+        public void onRmsChanged(float rmsdB) {
+
+        }
+
+        @Override
+        public void onBufferReceived(byte[] buffer) {
+
+        }
+
+        @Override
+        public void onEndOfSpeech() {
+            System.out.println("************ endof speech **********");
+            //speechRecognizer.startListening(speechRecognizerIntent);
+        }
+
+        @Override
+        public void onError(int error) {
+            System.out.println("**********=====" + error);
+            //speechRecognizer.cancel();
+            speechRecognizer.destroy();
+            speechRecognizer = null;
+            startSpeechReception();
+        }
+
+        @Override
+        public void onResults(Bundle results) {
+            ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            System.out.println(matches.get(0));
+            speechRecognizer.destroy();
+            speechRecognizer = null;
+            startSpeechReception();
+            //speechRecognizer.startListening(speechRecognizerIntent);
+            //speechRecognizer.destroy();
+            // startSpeechReception();
+        }
+
+        @Override
+        public void onPartialResults(Bundle partialResults) {
+
+        }
+
+        @Override
+        public void onEvent(int eventType, Bundle params) {
+            System.out.println("************ event occured **********");
+        }
     }
 }
