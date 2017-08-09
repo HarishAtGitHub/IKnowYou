@@ -1,7 +1,9 @@
 package harish.com.augmentedpersontagger;
 
 import android.Manifest;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -10,6 +12,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.os.Handler;
 import android.os.Message;
+import android.speech.RecognizerIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -17,12 +20,14 @@ import android.view.Surface;
 import android.view.SurfaceView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import harish.com.augmentedgpstagger.R;
 
 public class MainActivity extends AppCompatActivity implements Handler.Callback {
     private static final String CAMERA_ID = "0";
+    private static final int MAIN_ACTIVITY_SPEECH_RECOGNITON_CODE = 100;
     private CameraDevice cameraDevice;
     private SurfaceView realityView;
     private TextView infoBox;
@@ -65,7 +70,38 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
             }
         };
 
+        startSpeechReception();
 
+
+    }
+
+    private void startSpeechReception() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        //intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+        //        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        try {
+            startActivityForResult(intent, MAIN_ACTIVITY_SPEECH_RECOGNITON_CODE);
+        } catch (ActivityNotFoundException a) {
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case MAIN_ACTIVITY_SPEECH_RECOGNITON_CODE: {
+                if (resultCode == RESULT_OK && null != data) {
+                    ArrayList<String> result = data
+                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    System.out.println("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
+                    System.out.println(result.get(0));
+                }
+                startSpeechReception();
+                break;
+            }
+
+        }
     }
 
     private void startPreview() {
