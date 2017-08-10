@@ -5,11 +5,18 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.TotalCaptureResult;
+import android.media.Image;
+import android.media.ImageReader;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.speech.RecognitionListener;
@@ -18,12 +25,22 @@ import android.speech.SpeechRecognizer;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Size;
+import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.widget.TextView;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import harish.com.augmentedgpstagger.R;
 
@@ -46,6 +63,20 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
     private boolean isListening;
+    private Set<String> person_questions = new HashSet<>(Arrays.asList(
+            "hey buddy who is this",
+            "hey buddy tell me who this is",
+            "hey buddy tell me who is this",
+            "hey buddy tell who is this",
+            "hey buddy who is this",
+            "hey buddy who is this person here"));
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
             public void onError(CameraDevice camera, int error) {
                 System.out.print("%%%%%%%%%%%%%%%%%Camera error%%%%%%%%%%%%%%%%%%%%");
             }
+
         };
 
         startSpeechReception();
@@ -296,13 +328,95 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         @Override
         public void onResults(Bundle results) {
             ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-            System.out.println(matches.get(0));
+            //System.out.println(matches.get(0));
+            if (person_questions.contains(matches.get(0))) {
+                System.out.println("matched");
+                System.out.println(matches.get(0));
+                takePicture();
+            }
             speechRecognizer.destroy();
             speechRecognizer = null;
             startSpeechReception();
             //speechRecognizer.startListening(speechRecognizerIntent);
             //speechRecognizer.destroy();
             // startSpeechReception();
+        }
+
+        private void takePicture() {
+            if(cameraDevice == null) {
+                return;
+            }
+
+            try {
+                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
+                Size[] jpegSizes = null;
+                if (characteristics != null) {
+                    jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+                }
+                int width = 640;
+                int height = 480;
+                if (jpegSizes != null && 0 < jpegSizes.length) {
+                    width = jpegSizes[0].getWidth();
+                    height = jpegSizes[0].getHeight();
+                }
+                ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+                final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                captureBuilder.addTarget(reader.getSurface());
+                captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                int rotation = getWindowManager().getDefaultDisplay().getRotation();
+                captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+                ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
+                    @Override
+                    public void onImageAvailable(ImageReader reader) {
+                        Image image = null;
+                        try {
+                            image = reader.acquireLatestImage();
+                            ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                            byte[] bytes = new byte[buffer.capacity()];
+                            buffer.get(bytes);
+                            postCapture(bytes);
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        } finally {
+                            if (image != null) {
+                                image.close();
+                            }
+                        }
+                    }
+                    private void postCapture(byte[] bytes) throws IOException {
+                        System.out.println("bytes got");
+
+                    }
+                };
+                reader.setOnImageAvailableListener(readerListener, null);
+                final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
+                    @Override
+                    public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                        super.onCaptureCompleted(session, request, result);
+
+                    }
+                };
+                cameraDevice.createCaptureSession(Arrays.asList(reader.getSurface()), new CameraCaptureSession.StateCallback() {
+                    @Override
+                    public void onConfigured(CameraCaptureSession session) {
+                        try {
+
+                            session.capture(captureBuilder.build(), captureListener, handler);
+                        } catch (CameraAccessException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    @Override
+                    public void onConfigureFailed(CameraCaptureSession session) {
+                    }
+                }, null);
+
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+
         }
 
         @Override
