@@ -5,6 +5,8 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -25,23 +27,33 @@ import android.speech.SpeechRecognizer;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Size;
-import android.util.SparseIntArray;
+import android.util.*;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.widget.TextView;
+import org.apache.commons.codec.binary.Base64;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import com.loopj.android.http.*;
+import cz.msebera.android.httpclient.Header;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import cz.msebera.android.httpclient.NameValuePair;
+import cz.msebera.android.httpclient.entity.StringEntity;
 import harish.com.augmentedgpstagger.R;
 
 public class MainActivity extends AppCompatActivity implements Handler.Callback {
@@ -350,7 +362,11 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                             ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                             byte[] bytes = new byte[buffer.capacity()];
                             buffer.get(bytes);
-                            postCapture(bytes);
+                            Bitmap imageBitMap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            imageBitMap.compress(Bitmap.CompressFormat.JPEG, 10, baos);
+                            byte[] bytesCompressed = baos.toByteArray();
+                            postCapture(bytesCompressed);
                         } catch (FileNotFoundException e) {
                             e.printStackTrace();
                         } catch (IOException e) {
@@ -363,6 +379,88 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                     }
                     private void postCapture(byte[] bytes) throws IOException {
                         System.out.println("bytes got");
+                        AsyncHttpClient client = new AsyncHttpClient();
+                        //client.addHeader("Content-Type", "application/json");
+                        client.addHeader("x-api-key", "h4ANNxg5AA5PpYMxu3QZg7t8C9St6KKI9rZPmrQT");
+                        RequestParams requestParams = new RequestParams();
+                        String imageString = new String(Base64.encodeBase64(bytes), StandardCharsets.UTF_8);
+                        requestParams.put("image", imageString);
+                        List<NameValuePair> params = new ArrayList<>();
+                        JSONObject jpayload = new JSONObject();
+                        try {
+                            jpayload.put("image", jpayload.toString()) ;
+                        } catch (JSONException e1) {
+                            e1.printStackTrace();
+                        }
+
+                        String url = "https://h2h2c0e7p9.execute-api.us-west-2.amazonaws.com/beta/imageinfo";
+
+                        client.post(null, url, new StringEntity("{\"image\" :\""  + imageString + "\"}", "UTF-8"),
+                                "application/json", new JsonHttpResponseHandler() {
+                                    @Override
+                                    public void onFailure(int statusCode,
+                                                          cz.msebera.android.httpclient.Header[] headers,
+                                                          java.lang.String responseString, java.lang.Throwable throwable) {
+                                        System.out.println(responseString);
+
+                                    }
+
+                                    @Override
+                                    public void onFailure(int statusCode,
+                                                          cz.msebera.android.httpclient.Header[] headers,
+                                                          java.lang.Throwable throwable,
+                                                          org.json.JSONObject errorResponse ) {
+                                        System.out.println(errorResponse.toString());
+                                    }
+
+
+                                    @Override
+                                    public void onSuccess(int statusCode,
+                                                          cz.msebera.android.httpclient.Header[] headers,
+                                                          org.json.JSONObject response){
+                                        System.out.println("SUCCESS");
+                                        System.out.println(response.toString());
+                                    }
+
+                                    @Override
+                                    public void onRetry(int retryNo) {
+                                        // called when request is retried
+                                        System.out.println("retrying");
+                                    }
+
+                        });
+                        /*
+                        client.post(url, requestParams, new JsonHttpResponseHandler() {
+                           @Override
+                            public void onFailure(int statusCode,
+                                                  cz.msebera.android.httpclient.Header[] headers,
+                                                  java.lang.String responseString, java.lang.Throwable throwable) {
+                                System.out.println(responseString);
+
+                            }
+
+                            @Override
+                            public void onFailure(int statusCode,
+                                                  cz.msebera.android.httpclient.Header[] headers,
+                                                  java.lang.Throwable throwable,
+                                                  org.json.JSONObject errorResponse ) {
+                                  System.out.println(errorResponse.toString());
+                            }
+
+
+                            @Override
+                            public void onSuccess(int statusCode,
+                                                  cz.msebera.android.httpclient.Header[] headers,
+                                                  org.json.JSONObject response){
+                                System.out.println(response.toString());
+                            }
+
+                            @Override
+                            public void onRetry(int retryNo) {
+                                // called when request is retried
+                                System.out.println("retrying");
+                            }
+                        });   */
 
                     }
                 };
