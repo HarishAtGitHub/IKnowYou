@@ -17,5 +17,82 @@
         android:layout_centerVertical="true"
         android:layout_alignParentEnd="true" />
 
+    <LinearLayout
+        android:layout_width="250dp"
+        android:layout_height="300dp"
+        android:layout_alignTop="@+id/realityviewer"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:visibility="invisible"
+        android:background="#f91616"
+        android:id="@+id/info_screen"
+        android:translationZ="10dp"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="Harish Kayarohanam"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:id="@+id/person_name"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="Graduate Student"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:layout_below="@+id/person_name"
+            android:id="@+id/careers"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="Computer Science"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:layout_below="@+id/careers"
+            android:id="@+id/major"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="Grad Service Assistant"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:layout_below="@+id/major"
+            android:id="@+id/title"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="Student, Employee"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:layout_below="@+id/major"
+            android:id="@+id/affiliations"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="Student, Employee"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:layout_below="@+id/major"
+            android:id="@+id/locations"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="17dp"
+            android:textIsSelectable="false"
+            android:text="2888473"
+            android:textColor="#000000"
+            android:textSize="15dp"
+            android:layout_below="@+id/title"
+            android:id="@+id/eid"/>
+
+
+    </LinearLayout>
+
 
 </RelativeLayout>

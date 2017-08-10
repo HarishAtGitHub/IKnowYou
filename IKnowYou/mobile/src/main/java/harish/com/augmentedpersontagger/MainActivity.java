@@ -30,8 +30,12 @@ import android.os.Bundle;
 import android.util.*;
 import android.view.Surface;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import org.apache.commons.codec.binary.Base64;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -54,7 +58,7 @@ import java.util.Set;
 
 import cz.msebera.android.httpclient.NameValuePair;
 import cz.msebera.android.httpclient.entity.StringEntity;
-import harish.com.augmentedgpstagger.R;
+import harish.com.augmentedpersontagger.R;
 
 public class MainActivity extends AppCompatActivity implements Handler.Callback {
 
@@ -70,6 +74,15 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     private CameraManager manager;
     private CameraDevice.StateCallback cameraDeviceStateCallBack;
     private final Handler handler = new Handler(this);
+    private LinearLayout info_screen;
+
+    private TextView person_name;
+    private TextView careers;
+    private TextView major;
+    private TextView title;
+    private TextView affiliations;
+    private TextView locations;
+    private TextView eid;
 
     // audio related
     private SpeechRecognizer speechRecognizer;
@@ -82,6 +95,9 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
             "hey buddy tell who is this",
             "hey buddy who is this",
             "hey buddy who is this person here"));
+    private Set<String> thanks_questions = new HashSet<>(Arrays.asList(
+            "hey buddy thanks",
+            "hey buddy thanks for the info"));
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -93,7 +109,16 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+        info_screen = (LinearLayout) findViewById(R.id.info_screen);
+        person_name = (TextView) findViewById(R.id.person_name);
+        careers = (TextView)findViewById(R.id.careers);
+        major = (TextView)findViewById(R.id.major);
+        title = (TextView)findViewById(R.id.title);
+        affiliations = (TextView)findViewById(R.id.affiliations);
+        locations = (TextView)findViewById(R.id.locations);
+        eid = (TextView)findViewById(R.id.eid);
         //Intent intent = new Intent("android.media.action.IMAGE_CAPTURE"); // for audio
         // MediaStore.ACTION_VIDEO_CAPTURE for video capture
         //startActivity(intent);
@@ -321,6 +346,10 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                 System.out.println("matched");
                 System.out.println(matches.get(0));
                 takePicture();
+            } else if (thanks_questions.contains(matches.get(0))) {
+                if(info_screen.getVisibility() == View.VISIBLE) {
+                    info_screen.setVisibility(View.INVISIBLE);
+                }
             }
             speechRecognizer.destroy();
             speechRecognizer = null;
@@ -417,11 +446,35 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                                     @Override
                                     public void onSuccess(int statusCode,
                                                           cz.msebera.android.httpclient.Header[] headers,
-                                                          org.json.JSONObject response){
+                                                          org.json.JSONObject response) {
                                         System.out.println("SUCCESS");
                                         System.out.println(response.toString());
-                                    }
+                                        // FIXME: fix in lambdat o handle this case
+                                        if (response.toString().indexOf("An error occurred (InvalidParameterException) when calling " +
+                                                "the SearchFacesByImage operation: There are no faces in the image. " +
+                                                "Should be at least 1.") == -1) {
+                                            try {
+                                                JSONObject jObject = new JSONObject(response.toString());
+                                                JSONObject info = (JSONObject) jObject.getJSONObject("info").getJSONObject("response").getJSONArray("docs").get(0);
+                                                String name = (String) info.get("firstName") +
+                                                        (String) info.get("middleName") +
+                                                        (String) info.get("lastName");
+                                                info_screen.setVisibility(View.VISIBLE);
+                                                person_name.setText("Name: " + name);
+                                                careers.setText("Careers: " + ((JSONArray)info.get("careers")).toString());
+                                                major.setText("Major: " + ((JSONArray) info.get("majors")).toString());
+                                                title.setText("Title: " + (String)info.get("primaryTitle").toString());
+                                                affiliations.setText("Affiliations: " +
+                                                        ((JSONArray) info.get("affiliations")).toString());
+                                                locations.setText("Location: " +
+                                                        ((JSONArray) info.get("locations")).toString());
+                                                eid.setText("EID: " + (String) info.get("eid"));
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
 
+                                        }
+                                    }
                                     @Override
                                     public void onRetry(int retryNo) {
                                         // called when request is retried
