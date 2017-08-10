@@ -133,25 +133,6 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         speechRecognizer.startListening(speechRecognizerIntent);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        switch (requestCode) {
-            case MAIN_ACTIVITY_SPEECH_RECOGNITON_CODE: {
-                if (resultCode == RESULT_OK && null != data) {
-                    ArrayList<String> result = data
-                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    System.out.println("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
-                    System.out.println(result.get(0));
-                }
-                startSpeechReception();
-                break;
-            }
-
-        }
-    }
-
     private void startPreview() {
         System.out.println("preview");
         createCameraPreviewSession();
@@ -238,18 +219,8 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        stopServices();
-    }
-
-    @Override
     protected void onStop() {
         super.onStop();
-        stopServices();
-    }
-
-    private void stopServices() {
         try{
             if(cameraCaptureSession != null) {
                 cameraCaptureSession.stopRepeating();
@@ -266,6 +237,11 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                 cameraCaptureSession = null;
             }
         }
+
+        stopServices();
+    }
+
+    private void stopServices() {
 
         // stop audio service for this app
         if (speechRecognizer != null)
@@ -395,6 +371,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                     @Override
                     public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
                         super.onCaptureCompleted(session, request, result);
+                        startPreview();
 
                     }
                 };
@@ -408,6 +385,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
                             e.printStackTrace();
                         }
                     }
+
                     @Override
                     public void onConfigureFailed(CameraCaptureSession session) {
                     }
